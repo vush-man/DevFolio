@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Activity,
   ArrowRight,
@@ -14,489 +14,506 @@ import {
   BookOpen,
   HelpCircle,
   Play,
-  Users
+  Copy,
+  Check,
+  Database,
+  Layers,
+  Clock,
+  Sliders
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { Card, CardContent } from '../../components/ui/Card';
+import { Card, CardHeader, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { NavigationRoute } from '../../types';
+import { TelemetryChart } from '../../components/charts/TelemetryChart';
+import { TelemetryPoint, NavigationRoute } from '../../types';
 
 export const HomeView: React.FC<{ onNavigate: (route: NavigationRoute) => void }> = ({ onNavigate }) => {
-  const [demoVUs, setDemoVUs] = useState(25);
-  const [demoRps, setDemoRps] = useState(185);
-  const [demoLatency, setDemoLatency] = useState(38);
-  const [isDemoSpiking, setIsDemoSpiking] = useState(false);
+  // Interactive Sandbox in Hero
+  const [selectedEndpoint, setSelectedEndpoint] = useState<string>('/api/devflow/health');
+  const [concurrencyVUs, setConcurrencyVUs] = useState<number>(20);
+  const [isExecuting, setIsExecuting] = useState<boolean>(false);
+  const [copiedInstall, setCopiedInstall] = useState<boolean>(false);
 
-  const triggerDemoSpike = () => {
-    setIsDemoSpiking(true);
-    setDemoVUs(60);
-    setDemoRps(340);
-    setDemoLatency(185);
+  // Live sandbox metrics
+  const [sandboxPoints, setSandboxPoints] = useState<TelemetryPoint[]>([
+    { timestampMs: 1000, second: 1, activeVus: 5, rps: 84, p50Ms: 11, p90Ms: 18, p95Ms: 24, p99Ms: 38, status2xx: 84, status4xx: 0, status5xx: 0, errorRate: 0 },
+    { timestampMs: 2000, second: 2, activeVus: 10, rps: 142, p50Ms: 13, p90Ms: 21, p95Ms: 29, p99Ms: 44, status2xx: 142, status4xx: 0, status5xx: 0, errorRate: 0 },
+    { timestampMs: 3000, second: 3, activeVus: 15, rps: 188, p50Ms: 14, p90Ms: 25, p95Ms: 34, p99Ms: 52, status2xx: 188, status4xx: 0, status5xx: 0, errorRate: 0 },
+    { timestampMs: 4000, second: 4, activeVus: 20, rps: 224, p50Ms: 16, p90Ms: 28, p95Ms: 38, p99Ms: 61, status2xx: 224, status4xx: 0, status5xx: 0, errorRate: 0 },
+    { timestampMs: 5000, second: 5, activeVus: 20, rps: 238, p50Ms: 15, p90Ms: 27, p95Ms: 37, p99Ms: 58, status2xx: 238, status4xx: 0, status5xx: 0, errorRate: 0 }
+  ]);
 
-    setTimeout(() => {
-      setIsDemoSpiking(false);
-      setDemoVUs(25);
-      setDemoRps(185);
-      setDemoLatency(38);
-    }, 4000);
+  const [activeMetrics, setActiveMetrics] = useState({
+    rps: 238,
+    p50: 15,
+    p95: 37,
+    p99: 58,
+    errors: 0
+  });
+
+  const handleRunDemoBenchmark = () => {
+    setIsExecuting(true);
+    let step = 0;
+    const isHeavy = selectedEndpoint.includes('slow') || selectedEndpoint.includes('search');
+    const isErrorProne = selectedEndpoint.includes('error');
+
+    const interval = setInterval(() => {
+      step++;
+      const baseLatency = isHeavy ? 140 : 16;
+      const jitter = Math.random() * 8;
+      const p50 = Math.round(baseLatency + jitter);
+      const p95 = Math.round(baseLatency * 1.8 + jitter * 2);
+      const p99 = Math.round(baseLatency * 3.2 + jitter * 4);
+      const rps = isHeavy ? Math.round(45 + Math.random() * 15) : Math.round(concurrencyVUs * 12 + Math.random() * 20);
+      const errCount = isErrorProne ? Math.round(rps * 0.18) : 0;
+      const errRate = isErrorProne ? 18.0 : 0.0;
+
+      const newPoint: TelemetryPoint = {
+        timestampMs: Date.now(),
+        second: step,
+        activeVus: Math.min(concurrencyVUs, Math.round((step / 3) * concurrencyVUs)),
+        rps,
+        p50Ms: p50,
+        p90Ms: Math.round(p95 * 0.85),
+        p95Ms: p95,
+        p99Ms: p99,
+        status2xx: rps - errCount,
+        status4xx: 0,
+        status5xx: errCount,
+        errorRate: errRate
+      };
+
+      setSandboxPoints(prev => [...prev.slice(-14), newPoint]);
+      setActiveMetrics({
+        rps,
+        p50,
+        p95,
+        p99,
+        errors: errCount
+      });
+
+      if (step >= 8) {
+        clearInterval(interval);
+        setIsExecuting(false);
+      }
+    }, 700);
   };
 
-  const faqs = [
-    {
-      q: 'How does DevFlow generate traffic without an external cluster?',
-      a: 'DevFlow utilizes an in-app bounded worker pool executing high-concurrency asynchronous fetch requests with precision sub-millisecond performance timers, reservoir percentile sampling, and browser network isolation.'
-    },
-    {
-      q: 'How does DevFlow integrate with the existing project backend?',
-      a: 'DevFlow comes pre-configured with direct target adapters to the Express core service routes (/api/devflow/health, /users, /search, /echo), allowing developers to benchmark both local and deployed microservices.'
-    },
-    {
-      q: 'Are high-concurrency tests safe for production systems?',
-      a: 'DevFlow incorporates strict safety safeguards: mandatory pre-flight authorization verification, private IP/localhost SSRF protection rules, duration hard-caps, and an instant kill-switch.'
-    },
-    {
-      q: 'What is the difference between p50, p95, and p99 latency?',
-      a: 'p50 is the median response time experienced by the typical user. p95 and p99 capture tail latencies experienced by the slowest 5% and 1% of requests—frequently exposing database lock contention, memory leaks, or garbage collection pauses that averages hide.'
-    }
-  ];
+  const copyCloneCmd = () => {
+    navigator.clipboard.writeText('git clone https://github.com/adityasinghr651/Lab_Engineering.git && cd project && npm install');
+    setCopiedInstall(true);
+    setTimeout(() => setCopiedInstall(false), 2000);
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#090D16] text-slate-900 dark:text-slate-100">
-      {/* 1. Hero Section */}
-      <section className="relative pt-12 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto overflow-hidden">
-        {/* Subtle background glow */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-sky-500/10 dark:bg-sky-500/5 blur-3xl pointer-events-none rounded-full" />
-
-        <div className="text-center max-w-3xl mx-auto relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-sky-300 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 text-xs font-mono font-medium mb-6">
-            <Activity className="w-3.5 h-3.5 text-sky-500" />
-            <span>Open-Source Performance Engineering Platform</span>
+    <div className="min-h-screen bg-slate-50 dark:bg-[#0B0F17] text-slate-900 dark:text-[#E6EDF3] bg-grid-pattern">
+      {/* 1. Technical Hero Section */}
+      <section className="border-b border-slate-200 dark:border-slate-800/80 pt-10 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="max-w-3xl mb-8">
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-[4px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111722] text-[11px] font-mono text-slate-600 dark:text-slate-300 mb-4">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>DevFlow Telemetry Studio &bull; v1.0.4 OSS</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 leading-[1.15]">
-            Stop Guessing Server Capacity.{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-indigo-600 dark:from-sky-400 dark:to-indigo-400">
-              Measure It.
-            </span>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100 font-mono">
+            Empirical HTTP Load Testing &amp; Latency Telemetry.
           </h1>
 
-          <p className="mt-5 text-base sm:text-lg text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl mx-auto">
-            Benchmark backend APIs, generate controlled load workloads, observe live sub-millisecond latency percentiles, and automatically diagnose database and queue bottlenecks before shipping to production.
+          <p className="mt-4 text-sm sm:text-base text-slate-600 dark:text-slate-400 leading-relaxed font-sans max-w-2xl">
+            Simulate concurrent client traffic workloads, measure microsecond quantile latency curves (<span className="font-mono text-sky-600 dark:text-sky-400">p50, p95, p99</span>), and diagnose PostgreSQL connection pool exhaustion before shipping code.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-6 flex flex-wrap items-center gap-3 font-mono text-xs">
             <Button
-              size="lg"
+              size="md"
               variant="primary"
               onClick={() => onNavigate('create-test')}
-              leftIcon={<Play className="w-4 h-4" />}
+              leftIcon={<Play className="w-3.5 h-3.5" />}
             >
-              Start Testing Now
+              Launch Load Studio
             </Button>
             <Button
-              size="lg"
-              variant="outline"
-              onClick={() => onNavigate('dashboard')}
-              leftIcon={<Activity className="w-4 h-4" />}
-            >
-              Live Demo Sandbox
-            </Button>
-            <Button
-              size="lg"
+              size="md"
               variant="secondary"
-              onClick={() => onNavigate('docs')}
-              leftIcon={<BookOpen className="w-4 h-4" />}
+              onClick={() => onNavigate('dashboard')}
+              leftIcon={<Activity className="w-3.5 h-3.5 text-sky-500" />}
             >
-              Documentation
+              Live Telemetry Console
             </Button>
-          </div>
-
-          <p className="mt-3 text-xs font-mono text-slate-500 dark:text-slate-400">
-            No credit card or cloud cluster required. 100% open-source under ISC/MIT.
-          </p>
-        </div>
-
-        {/* 2. Interactive Telemetry Cockpit Preview */}
-        <div className="mt-14 max-w-5xl mx-auto relative z-10">
-          <div className="rounded-2xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-[#0F172A] shadow-2xl overflow-hidden">
-            {/* Window bar */}
-            <div className="px-4 py-3 bg-slate-100 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-rose-500/80 inline-block" />
-                <span className="w-3 h-3 rounded-full bg-amber-500/80 inline-block" />
-                <span className="w-3 h-3 rounded-full bg-emerald-500/80 inline-block" />
-                <span className="ml-2 font-mono text-xs text-slate-600 dark:text-slate-400 font-medium">
-                  devflow-telemetry-console // target: devflow.local/api/health
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-medium">
-                  {isDemoSpiking ? 'STATUS: STRESS SATURATION' : 'STATUS: NOMINAL'}
-                </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={triggerDemoSpike}
-                  disabled={isDemoSpiking}
-                  className="text-xs font-mono py-1"
-                >
-                  {isDemoSpiking ? 'Simulating Spike...' : 'Simulate Spike'}
-                </Button>
-              </div>
-            </div>
-
-            {/* Metrics HUD */}
-            <div className="p-4 sm:p-6 grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50/50 dark:bg-slate-950/40 border-b border-slate-200 dark:border-slate-800">
-              <div>
-                <span className="text-[11px] font-mono uppercase text-slate-500 dark:text-slate-400">Virtual Users</span>
-                <p className="text-2xl font-bold font-mono text-slate-900 dark:text-slate-50 tabular-nums">
-                  {demoVUs} <span className="text-xs text-slate-400 font-normal">VUs</span>
-                </p>
-              </div>
-              <div>
-                <span className="text-[11px] font-mono uppercase text-slate-500 dark:text-slate-400">Throughput</span>
-                <p className="text-2xl font-bold font-mono text-sky-600 dark:text-sky-400 tabular-nums">
-                  {demoRps} <span className="text-xs text-slate-400 font-normal">RPS</span>
-                </p>
-              </div>
-              <div>
-                <span className="text-[11px] font-mono uppercase text-slate-500 dark:text-slate-400">p95 Latency</span>
-                <p className={`text-2xl font-bold font-mono tabular-nums ${isDemoSpiking ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                  {demoLatency} <span className="text-xs text-slate-400 font-normal">ms</span>
-                </p>
-              </div>
-              <div>
-                <span className="text-[11px] font-mono uppercase text-slate-500 dark:text-slate-400">Error Rate</span>
-                <p className={`text-2xl font-bold font-mono tabular-nums ${isDemoSpiking ? 'text-amber-500' : 'text-slate-900 dark:text-slate-50'}`}>
-                  {isDemoSpiking ? '4.8%' : '0.0%'}
-                </p>
-              </div>
-            </div>
-
-            {/* Visualizer graphic */}
-            <div className="p-6">
-              <div className="h-44 sm:h-56 w-full flex items-end gap-1.5 pt-4">
-                {Array.from({ length: 32 }).map((_, i) => {
-                  const isSpikeCol = isDemoSpiking && i > 18;
-                  const heightPercent = isSpikeCol
-                    ? Math.min(95, 45 + (i - 18) * 4 + Math.sin(i) * 12)
-                    : Math.min(85, 20 + Math.sin(i * 0.5) * 15 + (i * 0.8));
-                  return (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1 group relative">
-                      <div
-                        style={{ height: `${heightPercent}%` }}
-                        className={`w-full rounded-t transition-all duration-300 ${
-                          isSpikeCol
-                            ? 'bg-rose-500/80 hover:bg-rose-400'
-                            : 'bg-sky-500/70 hover:bg-sky-400 dark:bg-sky-500/50'
-                        }`}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 mt-2">
-                <span>00:00 (Start Ramp)</span>
-                <span>00:15 (Steady State)</span>
-                <span>00:30 (Target Ceiling)</span>
-              </div>
-            </div>
-
-            {/* Note banner */}
-            <div className="px-4 py-2.5 bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
-              <span className="flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                <span>Demonstration Mode active. Live tests execute real network fetch calls.</span>
-              </span>
-              <button
-                onClick={() => onNavigate('create-test')}
-                className="text-sky-600 dark:text-sky-400 hover:underline font-medium font-mono"
-              >
-                Run on your API &rarr;
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. Problem vs Solution */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-slate-200 dark:border-slate-800/80">
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-50">
-            Why Traditional Testing Leaves You Blind
-          </h2>
-          <p className="mt-3 text-slate-600 dark:text-slate-400 text-sm">
-            Functional unit tests verify that code runs once. They never reveal what happens when 50 students or users hit your endpoint concurrently.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-          {/* Without DevFlow */}
-          <Card className="border-rose-200 dark:border-rose-900/40 bg-rose-50/20 dark:bg-rose-950/10">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-semibold mb-4 text-base">
-                <AlertTriangle className="w-5 h-5 shrink-0" />
-                <span>Guessing Performance (Status Quo)</span>
-              </div>
-              <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-                <li className="flex items-start gap-2">
-                  <span className="text-rose-500 font-bold">&times;</span>
-                  <span>Testing single requests in Postman or curl gives zero indication of connection exhaustion.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-rose-500 font-bold">&times;</span>
-                  <span>Production database pools crash under modest concurrency due to unindexed queries.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-rose-500 font-bold">&times;</span>
-                  <span>Average latency metrics conceal devastating tail latency (p99) experienced by users.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-rose-500 font-bold">&times;</span>
-                  <span>Complex enterprise load suites require steep DSLs, distributed clusters, and paid licenses.</span>
-                </li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          {/* With DevFlow */}
-          <Card className="border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/20 dark:bg-emerald-950/10">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold mb-4 text-base">
-                <CheckCircle2 className="w-5 h-5 shrink-0" />
-                <span>Empirical Telemetry with DevFlow</span>
-              </div>
-              <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-                <li className="flex items-start gap-2">
-                  <span className="text-emerald-500 font-bold">&check;</span>
-                  <span>Real concurrent worker pools executing controlled ramp-ups and soak intervals.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-emerald-500 font-bold">&check;</span>
-                  <span>Sliding-window percentile curves (p50, p90, p95, p99) exposing exact tail degradation.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-emerald-500 font-bold">&check;</span>
-                  <span>Automated heuristic diagnosis flagging throughput plateaus and connection pool limits.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-emerald-500 font-bold">&check;</span>
-                  <span>Instant browser-native execution with zero install friction and clear exportable reports.</span>
-                </li>
-              </ul>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      {/* 4. How It Works (4 Steps) */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-slate-200 dark:border-slate-800/80 bg-slate-100/50 dark:bg-slate-900/20">
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-50">
-            How DevFlow Works in 4 Steps
-          </h2>
-          <p className="mt-3 text-slate-600 dark:text-slate-400 text-sm">
-            From configuring an authorized endpoint to automated bottleneck diagnosis in under two minutes.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="p-5">
-            <div className="w-9 h-9 rounded-lg bg-sky-100 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center font-mono font-bold text-sm mb-4">
-              01
-            </div>
-            <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Register Target</h3>
-            <p className="mt-2 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Add your API base URL, set environment tags (Dev, Staging), verify health connectivity, and specify safe concurrency limits.
-            </p>
-          </Card>
-
-          <Card className="p-5">
-            <div className="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-mono font-bold text-sm mb-4">
-              02
-            </div>
-            <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Configure Workload</h3>
-            <p className="mt-2 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Select Load, Stress, Spike, or Soak profiles. Tune Virtual Users (VUs), duration, ramp-up curves, pacing, and latency SLOs.
-            </p>
-          </Card>
-
-          <Card className="p-5">
-            <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-mono font-bold text-sm mb-4">
-              03
-            </div>
-            <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Execute & Monitor</h3>
-            <p className="mt-2 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Watch real-time requests per second, sliding percentile curves, and HTTP status code splits in a live telemetry cockpit.
-            </p>
-          </Card>
-
-          <Card className="p-5">
-            <div className="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-mono font-bold text-sm mb-4">
-              04
-            </div>
-            <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Diagnose & Compare</h3>
-            <p className="mt-2 text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Receive automated bottleneck findings, compare against baseline test runs, and export publication-ready engineering reports.
-            </p>
-          </Card>
-        </div>
-      </section>
-
-      {/* 5. Core Feature Grid */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-slate-200 dark:border-slate-800/80">
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-50">
-            Engineered for Backend Developers & SREs
-          </h2>
-          <p className="mt-3 text-slate-600 dark:text-slate-400 text-sm">
-            Everything you need to validate reliability without the complexity of distributed enterprise clusters.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <Zap className="w-5 h-5 text-sky-500" />
-              <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Sub-Millisecond Percentiles</h3>
-            </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Accurate p50, p90, p95, and p99 percentile calculation using reservoir quantile sampling to catch tail spikes immediately.
-            </p>
-          </Card>
-
-          <Card className="p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <Cpu className="w-5 h-5 text-indigo-500" />
-              <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Automated Bottleneck Detection</h3>
-            </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Deterministic rule heuristics identify connection pool exhaustion, unindexed database scans, and throughput plateaus.
-            </p>
-          </Card>
-
-          <Card className="p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <BarChart3 className="w-5 h-5 text-emerald-500" />
-              <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Regression Run Comparison</h3>
-            </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Compare baseline vs. candidate runs side-by-side with calculated absolute and percentage deltas across RPS, p95, and error rates.
-            </p>
-          </Card>
-
-          <Card className="p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <Server className="w-5 h-5 text-amber-500" />
-              <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Target Management & Health Checks</h3>
-            </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Maintain verified server inventories, configure bearer/API-key auth, and perform pre-flight latency pings before testing.
-            </p>
-          </Card>
-
-          <Card className="p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <ShieldCheck className="w-5 h-5 text-rose-500" />
-              <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Responsible Testing Safeguards</h3>
-            </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              SSRF validation guards, mandatory pre-flight safety reviews, strict concurrency clamps, and an instant kill-switch.
-            </p>
-          </Card>
-
-          <Card className="p-5">
-            <div className="flex items-center gap-3 mb-3">
-              <Terminal className="w-5 h-5 text-sky-500" />
-              <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Printable & JSON Reports</h3>
-            </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Generate clean, audit-ready performance reports with SLA verdicts, telemetry snapshots, and configuration audit trails.
-            </p>
-          </Card>
-        </div>
-      </section>
-
-      {/* 6. Open Source Mission */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-slate-200 dark:border-slate-800/80">
-        <div className="rounded-2xl border border-slate-300 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/60 p-8 sm:p-12 text-center max-w-4xl mx-auto">
-          <div className="w-12 h-12 rounded-xl bg-slate-900 dark:bg-slate-800 text-white flex items-center justify-center mx-auto mb-5">
-            <Github className="w-6 h-6" />
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-50">
-            Proudly Open Source on GitHub
-          </h2>
-          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 max-w-xl mx-auto leading-relaxed">
-            Built as an open-source performance engineering initiative under the <span className="font-mono font-medium">adityasinghr651/Lab_Engineering</span> repository. Inspect the code, contribute custom workload generators, or deploy your own internal testing agent.
-          </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-            <a
-              href="https://github.com/adityasinghr651/Lab_Engineering"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-mono font-semibold transition-colors"
-            >
-              <Github className="w-4 h-4" />
-              <span>Explore GitHub Repository</span>
-            </a>
             <Button
               size="md"
               variant="outline"
-              onClick={() => onNavigate('community')}
-              leftIcon={<Users className="w-4 h-4" />}
+              onClick={() => onNavigate('docs')}
+              leftIcon={<BookOpen className="w-3.5 h-3.5" />}
             >
-              Contributing Guide & Roadmap
+              Docs &amp; Architecture
             </Button>
           </div>
         </div>
-      </section>
 
-      {/* 7. FAQ */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto border-t border-slate-200 dark:border-slate-800/80">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50 text-center mb-8">
-          Frequently Asked Questions
-        </h2>
-        <div className="space-y-4">
-          {faqs.map((faq, idx) => (
-            <Card key={idx} className="p-4 sm:p-5">
-              <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-sm flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 text-sky-500 shrink-0" />
-                <span>{faq.q}</span>
-              </h3>
-              <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 pl-6 leading-relaxed">
-                {faq.a}
-              </p>
-            </Card>
-          ))}
+        {/* 2. Interactive Split-Pane Telemetry Workbench (Like Datadog / Grafana) */}
+        <div className="rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-[#111722] overflow-hidden shadow-xs">
+          {/* Top terminal bar */}
+          <div className="px-4 py-2.5 bg-slate-100/80 dark:bg-[#0E131D] border-b border-slate-200 dark:border-slate-800 flex items-center justify-between font-mono text-xs">
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+              <Terminal className="w-3.5 h-3.5 text-sky-500" />
+              <span className="font-bold text-slate-900 dark:text-slate-200">workbench // devflow-worker-pool</span>
+              <span className="text-slate-400">|</span>
+              <span className="text-[11px] text-slate-500">engine: web-worker-fetch</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase font-bold text-slate-500">
+                Mode: {isExecuting ? 'DISPATCHING TRAFFIC' : 'IDLE / READY'}
+              </span>
+              <span className={`w-2 h-2 rounded-full ${isExecuting ? 'bg-rose-500 animate-ping' : 'bg-emerald-500'}`} />
+            </div>
+          </div>
+
+          {/* Split Pane: Left Config / Right Telemetry */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-slate-200 dark:divide-slate-800">
+            {/* Left Control Column (4 cols) */}
+            <div className="lg:col-span-4 p-4 sm:p-5 space-y-4 bg-slate-50/50 dark:bg-[#0F141F]">
+              <div className="text-[11px] font-mono uppercase tracking-wider text-slate-500 font-bold">
+                Workload Parameters
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-slate-700 dark:text-slate-300 mb-1">
+                  Target Endpoint
+                </label>
+                <select
+                  value={selectedEndpoint}
+                  onChange={e => setSelectedEndpoint(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#161F2E] font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                >
+                  <option value="/api/devflow/health">GET /api/devflow/health (Baseline 200)</option>
+                  <option value="/api/devflow/search?q=pool">GET /api/devflow/search (DB Query)</option>
+                  <option value="/api/devflow/slow">GET /api/devflow/slow (250ms Delay)</option>
+                  <option value="/api/devflow/error-prone">GET /api/devflow/error-prone (5xx Injected)</option>
+                </select>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between text-xs font-mono mb-1">
+                  <span className="text-slate-600 dark:text-slate-400">Concurrency (VUs):</span>
+                  <span className="font-bold text-sky-600 dark:text-sky-400">{concurrencyVUs} Workers</span>
+                </div>
+                <input
+                  type="range"
+                  min={5}
+                  max={45}
+                  value={concurrencyVUs}
+                  onChange={e => setConcurrencyVUs(Number(e.target.value))}
+                  className="w-full accent-sky-500 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] font-mono text-slate-400 mt-1">
+                  <span>5 VUs</span>
+                  <span>25 VUs</span>
+                  <span>45 VUs</span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111722] text-[11px] font-mono text-slate-600 dark:text-slate-400 space-y-1">
+                <div className="flex justify-between">
+                  <span>Pacing Interval:</span>
+                  <span className="text-slate-900 dark:text-slate-100 font-bold">35ms</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Quantile Reservoir:</span>
+                  <span className="text-slate-900 dark:text-slate-100 font-bold">1,000 req/bucket</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Timer Precision:</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">0.1ms (DOMHighRes)</span>
+                </div>
+              </div>
+
+              <Button
+                size="md"
+                variant="primary"
+                onClick={handleRunDemoBenchmark}
+                isLoading={isExecuting}
+                className="w-full font-mono text-xs"
+                leftIcon={<Play className="w-3.5 h-3.5" />}
+              >
+                {isExecuting ? 'Simulating Traffic...' : 'Execute Benchmark'}
+              </Button>
+            </div>
+
+            {/* Right Telemetry Column (8 cols) */}
+            <div className="lg:col-span-8 p-4 sm:p-5 flex flex-col justify-between">
+              {/* Telemetry Gauge Counters */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div className="p-2.5 rounded border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#0E131D]">
+                  <span className="text-[10px] font-mono text-slate-400 uppercase block">Throughput</span>
+                  <span className="text-xl font-bold font-mono text-sky-600 dark:text-sky-400 tabular-nums">
+                    {activeMetrics.rps} <span className="text-xs text-slate-500 font-normal">RPS</span>
+                  </span>
+                </div>
+
+                <div className="p-2.5 rounded border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#0E131D]">
+                  <span className="text-[10px] font-mono text-sky-500 uppercase block">p50 Median</span>
+                  <span className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100 tabular-nums">
+                    {activeMetrics.p50} <span className="text-xs text-slate-500 font-normal">ms</span>
+                  </span>
+                </div>
+
+                <div className="p-2.5 rounded border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#0E131D]">
+                  <span className="text-[10px] font-mono text-amber-500 uppercase block">p95 Percentile</span>
+                  <span className="text-xl font-bold font-mono text-amber-600 dark:text-amber-400 tabular-nums">
+                    {activeMetrics.p95} <span className="text-xs text-slate-500 font-normal">ms</span>
+                  </span>
+                </div>
+
+                <div className="p-2.5 rounded border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-[#0E131D]">
+                  <span className="text-[10px] font-mono text-rose-500 uppercase block">Tail (p99)</span>
+                  <span className="text-xl font-bold font-mono text-rose-600 dark:text-rose-400 tabular-nums">
+                    {activeMetrics.p99} <span className="text-xs text-slate-500 font-normal">ms</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Live SVG Graph */}
+              <div className="flex-1 min-h-[190px]">
+                <TelemetryChart
+                  data={sandboxPoints}
+                  type="latency"
+                  height={190}
+                />
+              </div>
+
+              {/* Status breakdown bar */}
+              <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs font-mono text-slate-500">
+                <div className="flex items-center gap-3">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <span>200 OK</span>
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-500" />
+                    <span>{activeMetrics.errors > 0 ? `${activeMetrics.errors} Failed (500)` : '0 Errors'}</span>
+                  </span>
+                </div>
+                <button
+                  onClick={() => onNavigate('create-test')}
+                  className="text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1"
+                >
+                  <span>Open Advanced Wizard</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* 8. Footer */}
-      <footer className="border-t border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#090D16] py-12 px-4 sm:px-6 lg:px-8 text-xs text-slate-500 dark:text-slate-400">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <Activity className="w-5 h-5 text-sky-500" />
-            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">DevFlow</span>
-            <span className="text-[11px] font-mono">v1.0.4-oss</span>
-          </div>
+      {/* 3. Technical Comparison Table: Why Guesswork Fails */}
+      <section className="py-14 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-b border-slate-200 dark:border-slate-800/80">
+        <div className="max-w-2xl mb-8">
+          <span className="text-xs font-mono uppercase tracking-wider text-sky-600 dark:text-sky-400 font-bold">
+            Methodology Comparison
+          </span>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 font-mono mt-1">
+            Single-Request Testing vs. Empirical Quantile Telemetry
+          </h2>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
+            API debugging tools like Postman and curl send isolated sequential requests. They cannot uncover concurrency starvation or database connection pool timeouts.
+          </p>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-5 font-medium">
-            <button onClick={() => onNavigate('product')} className="hover:text-slate-900 dark:hover:text-slate-100">Product</button>
-            <button onClick={() => onNavigate('docs')} className="hover:text-slate-900 dark:hover:text-slate-100">Documentation</button>
-            <button onClick={() => onNavigate('community')} className="hover:text-slate-900 dark:hover:text-slate-100">Community</button>
-            <button onClick={() => onNavigate('legal')} className="hover:text-slate-900 dark:hover:text-slate-100">Responsible Testing</button>
-            <a
-              href="https://github.com/adityasinghr651/Lab_Engineering"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-slate-900 dark:hover:text-slate-100"
-            >
-              GitHub
-            </a>
-          </div>
+        <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111722]">
+          <table className="w-full text-left text-xs font-mono border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#0E131D] text-slate-500 text-[11px] uppercase">
+                <th className="p-3 pl-4">Engineering Metric</th>
+                <th className="p-3">Single-Request (cURL / Postman)</th>
+                <th className="p-3">Heavy Distributed Clusters</th>
+                <th className="p-3 pr-4 text-sky-600 dark:text-sky-400 font-bold">DevFlow Performance Lab</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+              <tr>
+                <td className="p-3 pl-4 font-semibold text-slate-800 dark:text-slate-200 font-sans">
+                  Tail Latency (p95 &amp; p99)
+                </td>
+                <td className="p-3 text-rose-600 dark:text-rose-400">
+                  Not measured (Single sample only)
+                </td>
+                <td className="p-3 text-slate-600 dark:text-slate-400">
+                  Supported via heavy backend agents
+                </td>
+                <td className="p-3 pr-4 text-emerald-600 dark:text-emerald-400 font-bold">
+                  Calculated live in 1s reservoir buckets
+                </td>
+              </tr>
+              <tr>
+                <td className="p-3 pl-4 font-semibold text-slate-800 dark:text-slate-200 font-sans">
+                  Connection Pool Saturation
+                </td>
+                <td className="p-3 text-rose-600 dark:text-rose-400">
+                  Invisible (0 concurrent load)
+                </td>
+                <td className="p-3 text-slate-600 dark:text-slate-400">
+                  Requires manual Datadog correlation
+                </td>
+                <td className="p-3 pr-4 text-emerald-600 dark:text-emerald-400 font-bold">
+                  Auto-detected via queueing heuristic
+                </td>
+              </tr>
+              <tr>
+                <td className="p-3 pl-4 font-semibold text-slate-800 dark:text-slate-200 font-sans">
+                  Setup Friction
+                </td>
+                <td className="p-3 text-slate-600 dark:text-slate-400">
+                  Zero setup, but zero concurrency
+                </td>
+                <td className="p-3 text-rose-600 dark:text-rose-400">
+                  High (Kubernetes clusters, DSL scripts)
+                </td>
+                <td className="p-3 pr-4 text-emerald-600 dark:text-emerald-400 font-bold">
+                  Zero-install browser studio + local proxy
+                </td>
+              </tr>
+              <tr>
+                <td className="p-3 pl-4 font-semibold text-slate-800 dark:text-slate-200 font-sans">
+                  Regression Run Diffs
+                </td>
+                <td className="p-3 text-rose-600 dark:text-rose-400">
+                  None
+                </td>
+                <td className="p-3 text-slate-600 dark:text-slate-400">
+                  Paid enterprise add-on
+                </td>
+                <td className="p-3 pr-4 text-emerald-600 dark:text-emerald-400 font-bold">
+                  Native side-by-side delta calculator
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-          <div>
-            &copy; 2026 DevFlow Open Source Project. Designed for reliable engineering.
+      {/* 4. Six Deterministic Diagnostic Heuristics */}
+      <section className="py-14 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-b border-slate-200 dark:border-slate-800/80">
+        <div className="max-w-2xl mb-8">
+          <span className="text-xs font-mono uppercase tracking-wider text-sky-600 dark:text-sky-400 font-bold">
+            Automated Root Cause Diagnostics
+          </span>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 font-mono mt-1">
+            Deterministic Bottleneck Detection
+          </h2>
+          <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
+            DevFlow evaluates empirical telemetry against deterministic infrastructure heuristics to diagnose why servers degrade under load.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="p-4 space-y-2">
+            <div className="flex items-center gap-2 font-mono text-xs font-bold text-slate-900 dark:text-slate-100">
+              <Database className="w-4 h-4 text-rose-500" />
+              <span>Pool Exhaustion &amp; Queue Delay</span>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-sans">
+              Triggers when throughput plateaus while p95 latency escalates non-linearly (&gt;180% increase), indicative of PostgreSQL pool backlog.
+            </p>
+          </Card>
+
+          <Card className="p-4 space-y-2">
+            <div className="flex items-center gap-2 font-mono text-xs font-bold text-slate-900 dark:text-slate-100">
+              <Clock className="w-4 h-4 text-amber-500" />
+              <span>Tail Latency Disparity (p99/p50)</span>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-sans">
+              Detects cases where median response remains fast but p99 exceeds 3.8x baseline, isolating sporadic GC pauses or lock contention.
+            </p>
+          </Card>
+
+          <Card className="p-4 space-y-2">
+            <div className="flex items-center gap-2 font-mono text-xs font-bold text-slate-900 dark:text-slate-100">
+              <Zap className="w-4 h-4 text-emerald-500" />
+              <span>Cold-Start &amp; JIT Penalty</span>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-sans">
+              Identifies initial 3-second initialization lag that resolves once DB connection handshakes and JIT caching stabilize.
+            </p>
+          </Card>
+        </div>
+      </section>
+
+      {/* 5. Audited Backend Quickstart & GitHub Link */}
+      <section className="py-14 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="rounded-lg border border-slate-300 dark:border-slate-800 bg-white dark:bg-[#111722] p-6 sm:p-8">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs font-mono font-bold text-sky-600 dark:text-sky-400">
+                <Github className="w-4 h-4" />
+                <span>adityasinghr651/Lab_Engineering</span>
+              </div>
+              <h2 className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100">
+                Quickstart with the project/ Backend
+              </h2>
+              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-xl font-sans">
+                Clone the repository, start the Express backend in <code className="font-mono text-sky-500">project/</code>, and benchmark your local routes (<code className="font-mono text-xs">/api/devflow/*</code>).
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 font-mono text-xs">
+              <div className="px-3 py-2 rounded bg-slate-100 dark:bg-[#0E131D] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 truncate max-w-md">
+                git clone https://github.com/adityasinghr651/Lab_Engineering.git
+              </div>
+              <Button
+                size="md"
+                variant="outline"
+                onClick={copyCloneCmd}
+                leftIcon={copiedInstall ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+              >
+                {copiedInstall ? 'Copied' : 'Copy'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. Technical Engineering FAQ */}
+      <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto border-t border-slate-200 dark:border-slate-800/80">
+        <h2 className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100 mb-6 text-center">
+          Technical Architecture Questions
+        </h2>
+        <div className="space-y-3 font-mono text-xs">
+          <Card className="p-4">
+            <h3 className="font-bold text-slate-900 dark:text-slate-100 mb-1">
+              Q: How does the browser calculate accurate p95 and p99 without memory overhead?
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 font-sans leading-relaxed">
+              DevFlow partitions continuous execution into discrete 1-second histogram reservoir windows. Latencies are recorded with sub-millisecond precision via <code className="font-mono text-xs">performance.now()</code> and sorted per-window to extract exact quantile values.
+            </p>
+          </Card>
+
+          <Card className="p-4">
+            <h3 className="font-bold text-slate-900 dark:text-slate-100 mb-1">
+              Q: Can I test external staging endpoints or only localhost?
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 font-sans leading-relaxed">
+              You can test any reachable HTTP/HTTPS API. For external APIs, standard CORS pre-flight rules apply. For development clusters, the integrated DevFlow server proxy relays requests to bypass cross-origin blocks.
+            </p>
+          </Card>
+        </div>
+      </section>
+
+      {/* 7. Footer */}
+      <footer className="border-t border-slate-200 dark:border-slate-800/80 py-8 px-4 sm:px-6 lg:px-8 text-xs font-mono text-slate-500 dark:text-slate-400">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 text-sky-500" />
+            <span className="font-bold text-slate-800 dark:text-slate-200">DevFlow</span>
+            <span>&bull;</span>
+            <span>Open-Source Performance Engineering Platform</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <button onClick={() => onNavigate('product')} className="hover:underline">Capabilities</button>
+            <button onClick={() => onNavigate('docs')} className="hover:underline">Documentation</button>
+            <button onClick={() => onNavigate('community')} className="hover:underline">GitHub Community</button>
+            <button onClick={() => onNavigate('legal')} className="hover:underline">Safety Charter</button>
           </div>
         </div>
       </footer>

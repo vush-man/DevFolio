@@ -43,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'targets' as NavigationRoute,
-      label: 'Servers & Targets',
+      label: 'Targets & APIs',
       icon: <Server className="w-4 h-4 shrink-0" />,
       badge: activeTargetsCount > 0 ? activeTargetsCount : undefined
     },
@@ -55,13 +55,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'monitor' as NavigationRoute,
-      label: 'Live Monitoring',
+      label: 'Live Monitor',
       icon: <Activity className="w-4 h-4 shrink-0" />,
       isPulse: isTestRunning
     },
     {
       id: 'results' as NavigationRoute,
-      label: 'Test Runs',
+      label: 'Run History',
       icon: <History className="w-4 h-4 shrink-0" />,
       badge: totalRunsCount > 0 ? totalRunsCount : undefined
     },
@@ -72,12 +72,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'reports' as NavigationRoute,
-      label: 'Reports & Export',
+      label: 'Audit Reports',
       icon: <FileText className="w-4 h-4 shrink-0" />
     },
     {
       id: 'comparisons' as NavigationRoute,
-      label: 'Comparisons',
+      label: 'Diff / Compare',
       icon: <GitCompare className="w-4 h-4 shrink-0" />
     },
     {
@@ -94,24 +94,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      className={`relative border-r border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-[#090D16]/50 flex flex-col justify-between transition-all duration-200 shrink-0 ${
-        isCollapsed ? 'w-14 sm:w-16' : 'w-56 sm:w-60'
+      className={`relative border-r border-slate-200 dark:border-slate-800/80 bg-slate-50/60 dark:bg-[#0B0F17] flex flex-col justify-between transition-all duration-150 shrink-0 select-none ${
+        isCollapsed ? 'w-12 sm:w-14' : 'w-52 sm:w-56'
       }`}
     >
       {/* Top Nav Items */}
-      <div className="p-2 sm:p-3 space-y-1">
-        <div className="flex items-center justify-between px-2 py-1.5 mb-2">
+      <div className="p-2 space-y-0.5">
+        <div className="flex items-center justify-between px-2 py-1.5 mb-1">
           {!isCollapsed && (
-            <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider font-mono">
-              Engineering Console
+            <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider font-mono">
+              DevFlow Studio
             </span>
           )}
           <button
             onClick={onToggleCollapse}
-            className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ml-auto"
+            className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800 transition-colors ml-auto"
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
           </button>
         </div>
 
@@ -121,17 +121,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors select-none ${
+              className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-[4px] text-xs font-mono transition-colors ${
                 isActive
-                  ? 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 font-semibold border border-sky-200/80 dark:border-sky-800/80'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100/70 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white'
-              } ${item.highlight && !isActive ? 'hover:border-sky-500/30' : ''}`}
+                  ? 'bg-slate-200/80 dark:bg-[#161F2E] text-sky-600 dark:text-sky-400 font-semibold border-l-2 border-sky-500 pl-2'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#121824] hover:text-slate-900 dark:hover:text-slate-200'
+              }`}
               title={isCollapsed ? item.label : undefined}
             >
               <div className="relative">
                 {item.icon}
                 {item.isPulse && (
-                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                  <span className="absolute -top-1 -right-1 w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
                 )}
               </div>
 
@@ -140,8 +140,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
 
               {!isCollapsed && item.badge !== undefined && (
-                <span className="text-[10px] font-mono font-medium px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                  {item.badge}
+                <span className="text-[10px] font-mono text-slate-400">
+                  [{item.badge}]
                 </span>
               )}
             </button>
@@ -150,20 +150,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Footer System Status */}
-      <div className="p-3 border-t border-slate-200 dark:border-slate-800/80">
+      <div className="p-2.5 border-t border-slate-200 dark:border-slate-800/80 font-mono text-[11px] text-slate-400 dark:text-slate-500">
         {!isCollapsed ? (
-          <div className="space-y-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-            <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-mono">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Safe Sandbox Active</span>
-            </div>
-            <p className="font-mono text-[10px] text-slate-400 dark:text-slate-500">
-              DevFlow Engine v1.0.4-oss
-            </p>
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-[10px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Sandbox OK</span>
+            </span>
+            <span className="text-[10px]">v1.0.4</span>
           </div>
         ) : (
-          <div className="flex justify-center" title="DevFlow Engine v1.0.4-oss">
-            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+          <div className="flex justify-center" title="DevFlow Sandbox OK">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
           </div>
         )}
       </div>

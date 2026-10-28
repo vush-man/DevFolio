@@ -283,96 +283,96 @@ export const CreateTestView: React.FC<CreateTestViewProps> = ({
             {/* Load Test */}
             <div
               onClick={() => { setTestType('load'); setConcurrency(15); setDurationSeconds(25); setRampUpSeconds(5); }}
-              className={`p-4 rounded-xl border cursor-pointer transition-all ${
+              className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
                 testType === 'load'
-                  ? 'border-sky-500 bg-sky-50/40 dark:bg-sky-950/20'
+                  ? 'border-sky-500 bg-sky-50/30 dark:bg-[#161F2E]'
                   : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-semibold text-xs text-slate-900 dark:text-slate-100 flex items-center gap-2 font-mono">
                   <Activity className="w-4 h-4 text-sky-500" />
-                  <span>Load Test (Recommended)</span>
+                  <span>Load Test (Nominal)</span>
                 </span>
-                <Badge variant="success" size="sm">Available</Badge>
+                <span className="text-[10px] font-mono font-bold text-emerald-500">[READY]</span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-2.5">
                 Smooth ramp-up followed by sustained steady-state traffic to verify normal performance targets.
               </p>
               <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                Default: 15 VUs &bull; 25s duration &bull; 5s ramp
+                Default: 15 VUs &bull; 25s &bull; 5s ramp
               </div>
             </div>
 
             {/* Stress Test */}
             <div
               onClick={() => { setTestType('stress'); setConcurrency(35); setDurationSeconds(35); setRampUpSeconds(8); }}
-              className={`p-4 rounded-xl border cursor-pointer transition-all ${
+              className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
                 testType === 'stress'
-                  ? 'border-sky-500 bg-sky-50/40 dark:bg-sky-950/20'
+                  ? 'border-sky-500 bg-sky-50/30 dark:bg-[#161F2E]'
                   : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-semibold text-xs text-slate-900 dark:text-slate-100 flex items-center gap-2 font-mono">
                   <Zap className="w-4 h-4 text-amber-500" />
-                  <span>Stress Test</span>
+                  <span>Stress Test (Capacity Cliff)</span>
                 </span>
-                <Badge variant="success" size="sm">Available</Badge>
+                <span className="text-[10px] font-mono font-bold text-amber-500">[READY]</span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-2.5">
                 Aggressive concurrency climb designed to push past nominal capacity and locate the saturation breaking point.
               </p>
               <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                Default: 35 VUs &bull; 35s duration &bull; 8s ramp
+                Default: 35 VUs &bull; 35s &bull; 8s ramp
               </div>
             </div>
 
             {/* Spike Test */}
             <div
               onClick={() => { setTestType('spike'); setConcurrency(40); setDurationSeconds(20); setRampUpSeconds(1); }}
-              className={`p-4 rounded-xl border cursor-pointer transition-all ${
+              className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
                 testType === 'spike'
-                  ? 'border-sky-500 bg-sky-50/40 dark:bg-sky-950/20'
+                  ? 'border-sky-500 bg-sky-50/30 dark:bg-[#161F2E]'
                   : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-semibold text-xs text-slate-900 dark:text-slate-100 flex items-center gap-2 font-mono">
                   <AlertTriangle className="w-4 h-4 text-rose-500" />
-                  <span>Spike Test</span>
+                  <span>Spike Test (Instant Surge)</span>
                 </span>
-                <Badge variant="success" size="sm">Available</Badge>
+                <span className="text-[10px] font-mono font-bold text-rose-500">[READY]</span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-2.5">
                 Immediate instantaneous traffic surge to test server autoscaling responsiveness and queue buffers.
               </p>
               <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                Default: 40 VUs &bull; 20s duration &bull; 1s ramp
+                Default: 40 VUs &bull; 20s &bull; 1s ramp
               </div>
             </div>
 
             {/* Soak Test */}
             <div
               onClick={() => { setTestType('soak'); setConcurrency(10); setDurationSeconds(60); setRampUpSeconds(5); }}
-              className={`p-4 rounded-xl border cursor-pointer transition-all ${
+              className={`p-3.5 rounded-lg border cursor-pointer transition-all ${
                 testType === 'soak'
-                  ? 'border-sky-500 bg-sky-50/40 dark:bg-sky-950/20'
+                  ? 'border-sky-500 bg-sky-50/30 dark:bg-[#161F2E]'
                   : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-semibold text-xs text-slate-900 dark:text-slate-100 flex items-center gap-2 font-mono">
                   <Clock className="w-4 h-4 text-indigo-500" />
-                  <span>Soak Test</span>
+                  <span>Soak Test (Endurance)</span>
                 </span>
-                <Badge variant="success" size="sm">Available</Badge>
+                <span className="text-[10px] font-mono font-bold text-indigo-500">[READY]</span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-2.5">
                 Sustained baseline traffic over extended duration to detect slow memory leaks and resource depletion.
               </p>
               <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-                Default: 10 VUs &bull; 60s duration &bull; 5s ramp
+                Default: 10 VUs &bull; 60s &bull; 5s ramp
               </div>
             </div>
           </div>

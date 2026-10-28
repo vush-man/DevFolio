@@ -84,30 +84,31 @@ export const LiveMonitorView: React.FC<LiveMonitorViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Cockpit Status Bar */}
-      <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111722] flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white ${
+            <div className={`w-7 h-7 rounded-[4px] flex items-center justify-center text-white ${
               isRunning ? (isPaused ? 'bg-amber-500' : 'bg-rose-500 animate-pulse') : 'bg-emerald-500'
             }`}>
-              <Activity className="w-5 h-5" />
+              <Activity className="w-4 h-4" />
             </div>
           </div>
 
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-bold text-base text-slate-900 dark:text-slate-100 font-mono">
+              <h1 className="font-bold text-sm text-slate-900 dark:text-slate-100">
                 {currentRun?.name || 'Active Workload Stream'}
               </h1>
-              <Badge
-                variant={isRunning ? (isPaused ? 'warning' : 'danger') : 'success'}
-                size="sm"
-              >
-                {isRunning ? (isPaused ? 'PAUSED' : 'RUNNING') : 'FINALIZED'}
-              </Badge>
+              <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${
+                isRunning
+                  ? (isPaused ? 'text-amber-500 border-amber-500/40 bg-amber-500/10' : 'text-rose-500 border-rose-500/40 bg-rose-500/10')
+                  : 'text-emerald-500 border-emerald-500/40 bg-emerald-500/10'
+              }`}>
+                [{isRunning ? (isPaused ? 'PAUSED' : 'RUNNING') : 'FINALIZED'}]
+              </span>
             </div>
-            <p className="text-xs font-mono text-slate-500 dark:text-slate-400 mt-0.5">
-              Target: <span className="text-sky-600 dark:text-sky-400 font-medium">{currentRun?.targetUrl}{currentRun?.profile.endpointPath}</span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              target: <span className="text-sky-600 dark:text-sky-400">{currentRun?.targetUrl}{currentRun?.profile.endpointPath}</span>
             </p>
           </div>
         </div>
