@@ -1,0 +1,6 @@
+{
+  "name": "DevFlow - Server Performance Engineering & Testing Platform",
+  "description": "An open-source server performance engineering and load testing platform to benchmark APIs, execute controlled traffic workloads, monitor live telemetry, and diagnose bottlenecks.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
